@@ -1,50 +1,45 @@
 from machine import ADC, Pin
 import time
 
-#Set ADC ports to read Diode Input
+
+# ADC inputs
 light_sensor_R = ADC(28)
 light_sensor_G = ADC(27)
 light_sensor_B = ADC(26)
 
-#Create a button object on GP13
+# Button on GP13
 button = Pin(13, Pin.IN, Pin.PULL_UP)
 
-#Set Floors & Gain as needed
+
 DARK_FLOOR = 400
+
 RED_GAIN = 1
 GREEN_GAIN = 1
 BLUE_GAIN = 1
 
-#Set "Last Button" state
 last_button = 1
+
 
 try:
     while True:
         current_button = button.value()
-    
+
+        # Detect button press: HIGH → LOW
         if last_button == 1 and current_button == 0:
             raw_R = light_sensor_R.read_u16()
             raw_G = light_sensor_G.read_u16()
             raw_B = light_sensor_B.read_u16()
 
-            R = max(0, raw_R - DARK_FLOOR)
-            G = max(0, raw_G - DARK_FLOOR)
-            B = max(0, raw_B - DARK_FLOOR)
+            R = int(max(0, raw_R - DARK_FLOOR) * RED_GAIN)
+            G = int(max(0, raw_G - DARK_FLOOR) * GREEN_GAIN)
+            B = int(max(0, raw_B - DARK_FLOOR) * BLUE_GAIN)
 
-            R = int(R * RED_GAIN)
-            G = int(G * GREEN_GAIN)
-            B = int(B * BLUE_GAIN)
-    
-
-            if R > 65535:
-                R = 65535
-            if G > 65535:
-                G = 65535
-            if B > 65535:
-                B = 65535
+            R = min(R, 65535)
+            G = min(G, 65535)
+            B = min(B, 65535)
 
             print(
-                "Captured"
+                "Captured",
                 "R:", raw_R,
                 "G:", raw_G,
                 "B:", raw_B,
@@ -53,11 +48,10 @@ try:
                 "Bcorr:", B
             )
 
-        time.sleep(0.2) #debounce
-   
+            time.sleep(0.2)  # debounce after capture
+
         last_button = current_button
-        time.sleep(0.02) 
+        time.sleep(0.02)
 
 except KeyboardInterrupt:
-    print("\nProgram Stopped Safely")
-
+    print("\nProgram stopped safely")
