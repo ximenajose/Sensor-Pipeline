@@ -14,21 +14,21 @@ BAUD_RATE = 115200
 ADC_MAX = 65_535
 
 #SENSOR DATA: STORE LATEST RAW AND CORRECTED RGB VALUES
-sensor_data = {
+photometer = {
     "raw": (0, 0, 0),
     "corrected": (0, 0, 0),
 }
 
 # FUNCTION: CONVERT 16-BIT ADC VALUE TO 8-BIT DISPLAY VALUE
-def scale_to_byte(value):
+def make_byte(value):
     return round(value / ADC_MAX * 255)
 
 # FUNCTION: CALCULATE GRAYSCALE FROM 8-BIT RGB VALUES
-def calculate_grayscale(red, green, blue):
+def make_gray(red, green, blue):
     return round(0.30 * red + 0.59 * green + 0.11 * blue)
 
 # FUNCTION: PARSE RAW AND CORRECTED RGB VALYES FROM PICO SERIAL OUTPUT
-def parse_sensor_data(line):
+def parse_photometer(line):
 
     # SERIAL INPUT: SPLIT TEXT INTO INDIVIDUAL VALUES
     parts = line.split()
@@ -56,7 +56,7 @@ def parse_sensor_data(line):
         return None
 
 # FUNCTION: READ SENSOR DATA FROM PICO OVER SERIAL
-def read_serial_data():
+def read_serial():
     try:
         # SERIAL CONNECTION: OPEN USB PORT TO PICO
         with serial.Serial(
@@ -64,12 +64,12 @@ def read_serial_data():
             BAUD_RATE,
             timeout=1,
         ) as pico:
-            
+
         # CONECTION DELAY: ALLOW PICO SERIAL CONNECTION TO INITIALIZE
             time.sleep(2)
 
             print(f"Connected to Pico on {SERIAL_PORT}")
-            print("Press the Pico button to capture a pixel.\n")
+            print("Press the button to capture a pixel.\n")
 
             # SERIAL LOOOP CONTINUOUSLY WAITS FOR NEW DATA
             while True:
@@ -81,17 +81,17 @@ def read_serial_data():
                 ).strip()
 
                 # PARSE DATA: EXTRACT RAW AND CORRECTED RGB VALUES
-                parsed = parse_sensor_data(line)
+                parsed = parse_photometer(line)
 
                 # SENSOR UPDATE: STORE MOST RECENT VALID PIXEL
                 if parsed is not None:
-                    sensor_data["raw"], sensor_data["corrected"] = parsed
+                    photometer["raw"], photometer["corrected"] = parsed
                     print(f"Received: {line}")
 
 # SERIAL ERROR: REPORT FAILED PICO CONNECTION 
     except serial.SerialException as error:
         print(f"Could not connect to {SERIAL_PORT}: {error}")
-        
+
 # DISPLAY SETUP: CREATE VALUE, RGB, AND GRAYSCALE PANELS
 
 fig, (ax_text, ax_rgb, ax_gray) = plt.subplots(
@@ -115,8 +115,8 @@ ax_gray.set_title("Grayscale Pixel", fontsize=12, weight="bold")
 
 # TEXT DISPLAY: CREATE PLAEHOLDER FOR SENSOR VALUES
 value_text = ax_text.text(
-    0.05,
-    0.95,
+    0.10,
+    0.90,
     "",
     va="top",
     family="monospace",
@@ -125,7 +125,7 @@ value_text = ax_text.text(
 )
 
 # RGB PIXEL: CREATE COLOR PATCH ONCE
-rgb_patch = Rectangle(
+rgb_sqr = Rectangle(
     (0.1, 0.1),
     0.8,
     0.8,
@@ -136,7 +136,7 @@ rgb_patch = Rectangle(
 
 
 # GRAYSCALE PIXEL: CREATE GRAY PATCH ONCE
-gray_patch = Rectangle(
+gray_sqr = Rectangle(
     (0.1, 0.1),
     0.8,
     0.8,
@@ -146,26 +146,26 @@ gray_patch = Rectangle(
 )
 
 # DISPLAY: ADD PIXEL PATCHES TO THEIR PANELS
-ax_rgb.add_patch(rgb_patch)
-ax_gray.add_patch(gray_patch)
+ax_rgb.add_patch(rgb_sqr)
+ax_gray.add_patch(gray_sqr)
 
 
 # FUNCTION: UPDATE DISPLAY USING LATEST SENSOR VALUES
 def update_display(_):
-    
+
  # SENSOR INPUT: GET RAW AND CORRECTED 16-BIT RGB VALUES
-    raw = sensor_data["raw"]
-    corrected = sensor_data["corrected"]
-    
+    raw = photometer["raw"]
+    corrected = photometer["corrected"]
+
 # DISPLAY CONVERSION: SCALE CORRECTED 16-BIT RGB TO 8-BIT RGB
     display = tuple(
-        scale_to_byte(value)
+        make_byte(value)
         for value in corrected
     )
-    
+
 # GRAYSCALE: CALCULATE 8-BIT GRAY VALUE FROM DISPLAY RGB
-    gray_value = calculate_grayscale(*display)
-    
+    gray_value = make_gray(*display)
+
 # TEXT OUTPUT: SHOW RAW, CORRECTED, DISPLAY, AND GRAY VALUES
     value_text.set_text(
         "RAW VALUES\n"
@@ -184,23 +184,23 @@ def update_display(_):
     )
 
 # RGB DISPLAY: NORMALIZE 8-BIT RGB TO 0-1 FOR MATPLOTLIB
-    rgb_patch.set_facecolor(
+    rgb_sqr.set_facecolor(
         tuple(value / 255 for value in display)
     )
 
 # GRAYSCALE DISPLAY: NORMALIZE GRAY TO 0-1 FOR MATPLOTLIB
-    gray_patch.set_facecolor(
+    gray_sqr.set_facecolor(
         (gray_value / 255,) * 3
     )
 
 # OUTPUT: START SERIAL READER AND LIVE PIXEL DISPLAY
 if __name__ == "__main__":
-    print("Starting Rossi Live Pixel Visualizer")
+    print("Starting Live Pixel Visualizer")
     print(f"Serial port: {SERIAL_PORT}")
 
 # THREAD: READ SERIAL DATA WITHOUT BLOCKING DISPLAY
     threading.Thread(
-        target=read_serial_data,
+        target=read_serial,
         daemon=True,
     ).start()
 
@@ -214,3 +214,5 @@ if __name__ == "__main__":
 
 # DISPLAY OUTPUT: SHOW LIVE PIXEL
     plt.show()
+
+
