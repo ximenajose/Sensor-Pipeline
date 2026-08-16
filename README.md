@@ -8,11 +8,11 @@ After calibration is completed by finding the noise floors and usable maximums f
 By weighting and combining the contribution of these three channels we can produce a single-colored pixel, which would ideally plot a similar graph to the Spectral Distribution curve of the known illuminant being used to test it. 
 
 Considerations should include: 
-  additive effect of transmissive reduction caused by the Wratten filters used and IR-cut filter;
-  time-based integrative measurement variation per capture;
-  spectral responses of the sensors used;
-  spectral transmissiveness of the filters used;
-  spectral distrubitions of the illuminants measured.
+  - additive effect of transmissive reduction caused by the Wratten filters used and IR-cut filter;
+  - time-based integrative measurement variation per capture;
+  - spectral responses of the sensors used;
+  - spectral transmissiveness of the filters used;
+  - spectral distrubitions of the illuminants measured.
 
 The firmware maps out each photodiode to individual ADC pins which receive the incoming voltages and process those into digital numbers on a 16-bit scale. A button function is defined to capture when the voltage from that pin changes states, and only captures once for 0.02 seconds.
 The firmware can have dark floor values set manually, as well gains per channel if needed. 
@@ -24,10 +24,10 @@ The display code receives the raw and corrected RGB photometer values sent by th
 Finally, the program displays the most recent captures of raw readings, corrected readings, 8-bit display values, RGB pixel, and grayscale pixel.
 
 Considerations should include:
-  scaling 16-bit (corrected) sensor values to 8-bit display;
-  RGB weighting used for grayscale;  
-  clipping or loss of precision during conversion; 
-  RGB pixel represents sensor contributions, not precise measured color.
+  - scaling 16-bit (corrected) sensor values to 8-bit display;
+  - RGB weighting used for grayscale;
+  - clipping or loss of precision during conversion;
+  - RGB pixel represents sensor contributions, not precise measured color.
 
 The device and systems are intended as educational tools to better understand the underlying systems used for cameras and telescopes, and which components and programs those  require to function. As such, the student acknowledges that the instrument does not yet yield metrologically or colorimetrically precise data, despite being an invaluable project as an introduction into detector optics and image science. 
 
