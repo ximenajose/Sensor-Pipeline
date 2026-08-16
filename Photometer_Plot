@@ -1,0 +1,144 @@
+# TOOLS
+
+import threading
+import time
+
+import matplotlib.pyplot as plt
+import serial
+from matplotlib.animation import FuncAnimation
+
+# SERIAL SETTINGS: PICO CONNECTION, BAUD RATE (COMMS) AND ADC RANGE
+SERIAL_PORT = "/dev/tty.usbmodem1101"
+BAUD_RATE = 115200
+
+# SENSOR DATA: STORE LATEST RAW AND CORRECTED RGB VALUES
+photometer = {
+    "raw": (0, 0, 0),
+    "corrected": (0, 0, 0),
+}
+
+# PLACEHOLDER WAVELENGTHS
+wavelengths = [450, 550, 650]
+
+# FUNCTION: PARSE RAW AND CORRECTED RGB VALUES FROM PICO SERIAL OUTPUT
+def parse_photometer(line):
+
+    # SERIAL INPUT: SPLIT TEXT INTO INDIVIDUAL VALUES
+    parts = line.split()
+
+    try:
+
+        # RAW RGB: FIND VALUES AFTER R, G, B LABELS
+        raw = (
+            int(parts[parts.index("R:") + 1]),
+            int(parts[parts.index("G:") + 1]),
+            int(parts[parts.index("B:") + 1]),
+        )
+
+        # CORRECTED RGB: FIND VALUES AFTER CORRECTED CHANNEL LABELS
+        corrected = (
+            int(parts[parts.index("Rcorr:") + 1]),
+            int(parts[parts.index("Gcorr:") + 1]),
+            int(parts[parts.index("Bcorr:") + 1]),
+        )
+
+        return raw, corrected
+
+    # INVALID SERIAL LINE: IGNORE LINES WITHOUT EXPECTED VALUES
+    except (ValueError, IndexError):
+        return None
+
+# FUNCTION: READ SENSOR DATA FROM PICO OVER SERIAL
+def read_serial():
+    try:
+
+        # SERIAL CONNECTION: OPEN USB PORT TO PICO
+        with serial.Serial(
+            SERIAL_PORT,
+            BAUD_RATE,
+            timeout=1,
+        ) as pico:
+
+            # CONNECTION DELAY: ALLOW PICO SERIAL CONNECTION TO INITIALIZE
+            time.sleep(2)
+
+            print(f"Connected to Pico on {SERIAL_PORT}")
+            print("Press the button to capture a pixel.\n")
+
+            while True:
+
+                line = pico.readline().decode(
+                    "utf-8",
+                    errors="ignore",
+                ).strip()
+
+                parsed = parse_photometer(line)
+
+                if parsed is not None:
+                    photometer["raw"], photometer["corrected"] = parsed
+
+                    print(f"Received: {line}")
+
+    except serial.SerialException as error:
+        print(f"Could not connect to {SERIAL_PORT}: {error}")
+
+
+# CREATE PLOT
+
+fig, ax = plt.subplots()
+
+spectral_line, = ax.plot(
+    wavelengths,
+    [0, 0, 0],
+    "o-",
+)
+
+blue_label = ax.text(wavelengths[0], 0, "Blue")
+green_label = ax.text(wavelengths[1], 0, "Green")
+red_label = ax.text(wavelengths[2], 0, "Red")
+
+ax.set_xlabel("Wavelength (nm)")
+ax.set_ylabel("Corrected DN")
+ax.set_title("Three-Channel Spectral Response")
+
+ax.set_xlim(400, 700)
+ax.set_ylim(0, 65535)
+
+
+# UPDATE PLOT WITH LATEST CAPTURE
+
+def update_plot(_):
+
+    corrected = photometer["corrected"]
+
+    responses = [
+        corrected[2],  # Blue
+        corrected[1],  # Green
+        corrected[0],  # Red
+    ]
+
+    spectral_line.set_ydata(responses)
+    
+    blue_label.set_text(f"Blue: {responses[0]} DN")
+    green_label.set_text(f"Green: {responses[1]} DN")
+    red_label.set_text(f"Red: {responses[2]} DN")
+
+    blue_label.set_position((wavelengths[0], responses[0]))
+    green_label.set_position((wavelengths[1], responses[1]))
+    red_label.set_position((wavelengths[2], responses[2]))    
+
+# START SERIAL THREAD
+threading.Thread(
+    target=read_serial,
+    daemon=True,
+).start()
+
+# UPDATE GRAPH
+animation = FuncAnimation(
+    fig,
+    update_plot,
+    interval=50,
+    cache_frame_data=False,
+)
+
+plt.show()
